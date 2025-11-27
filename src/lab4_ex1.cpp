@@ -161,6 +161,8 @@ void setup(void) {
         Serial.println("LCD initialization failed!");
         hd44780::fatalError(status);
     }
+
+    lcd.noBacklight();
     
     lcd.clear();
     lcd.setCursor(0, 0);
