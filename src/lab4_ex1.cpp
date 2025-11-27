@@ -12,7 +12,8 @@
 #include <Wire.h>
 #include <hd44780.h>
 #include <hd44780ioClass/hd44780_I2Cexp.h>
-#include <ESP32Servo.h>
+// #include <ESP32Servo.h>
+#include <Servo.h>
 
 //----------------------------------------------
 // GLOBAL VARIABLES and CONSTANTS
@@ -23,9 +24,11 @@ const int YELLOW_PIN = 12;
 const int BUZZER_PIN = 32;
 const int SERVO_PIN = 5;
 const int BUTTON_PIN = 25;
-const int LIGHT_SENSOR_PIN = 34; // Analog pin for light sensor
+const int LIGHT_SENSOR_PIN = 33; // Analog pin for light sensor
 
-Servo myServo;
+Servo myServo = Servo();
+// Servo myBuzzer = Servo();
+
 hd44780_I2Cexp lcd;
 const int LCD_COLS = 16;
 const int LCD_ROWS = 2;
@@ -90,13 +93,17 @@ BLYNK_WRITE(V7) {
 BLYNK_WRITE(V3) {   
     int value = param.asInt();
     if (value == 1) {
-        ledcWriteTone(0, buzzer_freq);
+        ledcWriteTone(2, buzzer_freq);
+        // tone(BUZZER_PIN, buzzer_freq);
+        // myBuzzer.tone(BUZZER_PIN, buzzer_freq, BUZZER_MAX_DURATION);
         buzzer_state = true;
         buzzer_start_time = millis();
         last_event = "Buz: ON " + String(buzzer_freq) + "Hz";
         Serial.println("Buzzer ON at " + String(buzzer_freq) + "Hz");
     } else {
-        ledcWriteTone(0, 0);
+        ledcWriteTone(2, 0);
+        // noTone(BUZZER_PIN);
+        // myBuzzer.writeMicroseconds(BUZZER_PIN, 0); // Turn off buzzer
         buzzer_state = false;
         last_event = "Buz: OFF";
         Serial.println("Buzzer OFF");
@@ -106,7 +113,7 @@ BLYNK_WRITE(V3) {
 
 BLYNK_WRITE(V8) {   
     int value = param.asInt();
-    myServo.write(value);
+    myServo.write(SERVO_PIN, value);
     last_event = "Servo: " + String(value) + (char)223; // degree symbol
     Serial.print("Servo Position: ");
     Serial.println(value);
@@ -125,16 +132,28 @@ void setup(void) {
     pinMode(GREEN_PIN, OUTPUT);
     pinMode(BLUE_PIN, OUTPUT);
     pinMode(YELLOW_PIN, OUTPUT);
-    pinMode(BUZZER_PIN, OUTPUT);
+    // pinMode(BUZZER_PIN, OUTPUT);
     pinMode(BUTTON_PIN, INPUT);
     pinMode(LIGHT_SENSOR_PIN, INPUT);
 
+    pinMode(SERVO_PIN, OUTPUT);
+    pinMode(BUZZER_PIN, OUTPUT);
+
     // Buzzer setup
-    ledcSetup(0, buzzer_freq, 8);
-    ledcAttachPin(BUZZER_PIN, 0);
+    ledcSetup(2, buzzer_freq, 16);
+    ledcAttachPin(BUZZER_PIN, 2);
+    // tone(BUZZER_PIN, 200); // Initialize buzzer to off
+    // delay(2000);
+    // noTone(BUZZER_PIN);
+
+    // myBuzzer.attach(BUZZER_PIN);
+    // myBuzzer.writeMicroseconds(BUZZER_PIN, 0); // Turn off buzzer
     
     // Servo setup
-    myServo.attach(SERVO_PIN, 500, 2400);
+    myServo.attach(SERVO_PIN);
+
+    // initial position to 90 degrees
+    myServo.write(SERVO_PIN, 90);
 
     // LCD setup
     int status = lcd.begin(LCD_COLS, LCD_ROWS);
@@ -183,7 +202,9 @@ void loop(void) {
 
     // Non-blocking buzzer auto-shutoff (3 seconds max)
     if (buzzer_state && (millis() - buzzer_start_time >= BUZZER_MAX_DURATION)) {
-        ledcWriteTone(0, 0);
+        ledcWriteTone(2, 0);
+        // noTone(BUZZER_PIN);
+        // myBuzzer.writeMicroseconds(BUZZER_PIN, 0); // Turn off buzzer
         buzzer_state = false;
         last_event = "Buz: timeout";
         Serial.println("Buzzer auto-off after 3s");
